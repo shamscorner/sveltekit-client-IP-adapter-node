@@ -15,31 +15,50 @@ export const load = async (event) => {
 	}
 	
 	try {
-		const address_header = process.env['ADDRESS_HEADER'].toLowerCase();
+		// const address_header = process.env['ADDRESS_HEADER'].toLowerCase();
+		const address_header = 'X-Forwarded-For'.toLowerCase(); // x-forwarded-for is default
 		extras.address_header = address_header;
 		console.log('\naddress_header: ', address_header);
 
-		const xff_depth = parseInt(process.env['XFF_DEPTH'] || '1', 10);
+		// const xff_depth = parseInt(process.env['XFF_DEPTH'] || '1', 10);
+		const xff_depth = parseInt('1', 10); // 1 is default
 		extras.xff_depth = xff_depth;
 		console.log('\nxff_depth: ', xff_depth);
 
 		const req = event.request;
 
 		// req.headers[address_header] = '123.234.234.546'; // only for local testing
-		extras.req_headers = req.headers;
-		console.log('\nreq.headers: ', req.headers);
+		// extras.req_headers = req.headers;
+		// console.log('\nreq.headers: ', req.headers);
+
+		req.headers.forEach((value, name) => {
+			console.log(`${name}: ${value}`);
+			extras.req_headers[name] = value;
+		});
+
+		extras.address_header_value = req.headers[address_header];
+
+		// ignore typescript errors
+		console.log('\nreq', req);
+
+		console.log('\nreq.connection: ', req.connection);
+		extras.req_connection = req.connection;
+		console.log('req.socket: ', req.socket);
+		extras.req_socket = req.socket;
+		console.log('req.info: ', req.info);
+		extras.req_info = req.info;
 
 		event.getClientAddress = () => {
 			if (address_header) {
 				extras.isHeaderExist = address_header in req.headers;
 				console.log('\nIs Address header exist?: ', address_header in req.headers);
-				if (!(address_header in req.headers)) {
-					throw new Error(
-						`Address header was specified with ${
-							'ADDRESS_HEADER'
-						}=${address_header} but is absent from request`
-					);
-				}
+				// if (!(address_header in req.headers)) {
+				// 	throw new Error(
+				// 		`Address header was specified with ${
+				// 			'ADDRESS_HEADER'
+				// 		}=${address_header} but is absent from request`
+				// 	);
+				// }
 
 				const value = /** @type {string} */ (req.headers[address_header]) || '';
 				extras.address_header_value = value;
@@ -50,32 +69,22 @@ export const load = async (event) => {
 					extras.addresses = addresses;
 					console.log('\naddresses: ', addresses);
 
-					if (xff_depth < 1) {
-						throw new Error(`${'XFF_DEPTH'} must be a positive integer`);
-					}
+					// if (xff_depth < 1) {
+					// 	throw new Error(`${'XFF_DEPTH'} must be a positive integer`);
+					// }
 
-					if (xff_depth > addresses.length) {
-						throw new Error(
-							`${'XFF_DEPTH'} is ${xff_depth}, but only found ${
-								addresses.length
-							} addresses`
-						);
-					}
+					// if (xff_depth > addresses.length) {
+					// 	throw new Error(
+					// 		`${'XFF_DEPTH'} is ${xff_depth}, but only found ${
+					// 			addresses.length
+					// 		} addresses`
+					// 	);
+					// }
 					return addresses[addresses.length - xff_depth].trim();
 				}
 
 				return value;
 			}
-
-			// ignore typescript errors
-			console.log('\nreq', req);
-			extras.req = req;
-			console.log('\nreq.connection: ', req.connection);
-			extras.req_connection = req.connection;
-			console.log('req.socket: ', req.socket);
-			extras.req_socket = req.socket;
-			console.log('req.info: ', req.info);
-			extras.req_info = req.info;
 
 			return (
 				req.connection?.remoteAddress ||
